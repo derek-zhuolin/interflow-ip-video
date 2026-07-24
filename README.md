@@ -1,104 +1,78 @@
-# Interflow IP 小人口播视频（Claude Code Skill）
+# Interflow IP 小人口播视频
 
-一段中文文稿 → **你自己的克隆音**配音 + 口型随声音开合的 IP 小人 + 暗底辉光数据可视化 + 玻璃拟态词级字幕 → 1080×1920 竖屏 MP4。
+丢给它一段中文文稿，它还你一条能直接发的竖屏口播视频：配音、口型、小人、画面、字幕，全部自动完成。不用出镜，不用剪辑，不用会做视频。
 
-无人出镜、零手工剪辑、本地渲染。装好后对 Claude Code 说一句「把这段文稿做成 IP 小人视频」即可，完整工作流见 [SKILL.md](SKILL.md)。
+> 这是一个 [Claude Code](https://claude.com/claude-code) skill。装好之后，对 Claude 说一句「把这段文稿做成 IP 小人视频」，剩下的都是它的事。
 
-> 这是一个 **Claude Code skill**，需要本机 node / ffmpeg / Python（不能在 claude.ai 网页版运行）。
+## 这东西是怎么来的
 
-## 声音的三档（零配置也能出片）
+这套管线原本不是"项目"，是我自己频道每天出片的方式。
 
-**这个仓库里没有、也永远不会有任何人的声音。** 口型、字幕、动效节拍吃的是音频的**响度包络 + 词级时间戳**，跟"谁的声音"无关——三档声音驱动的画面效果完全一致，差别只在"听起来是谁"：
+我想持续输出口播内容，但不想真人出镜，也不想每条片花一小时剪辑。所以我把「文稿 → 成片」这条路一段一段写成了代码：声音怎么断句、小人嘴巴怎么跟着声音开合、每句话配什么画面、字幕怎么跟读——一集一集跑下来，把踩过的坑全部写成硬规则，质检不过就不交片。这个仓库，就是把这套私人管线去掉我的凭证和声音之后，做成人人可用的版本。
 
-| 档 | 声音 | 需要什么 | 怎么用 |
-|---|---|---|---|
-| **0 · 免费声**（开箱即用） | edge-tts 在线合成（云希/晓晓等中文音色） | **零账号零凭证**，装个 `edge-tts` 包 | `scripts/tts_free.py`，装好即「文生视频」 |
-| **1 · 火山标准音色** | 豆包系标准音色，稳定、商用合规 | 火山引擎账号 + API 凭证（**不用克隆**） | `.env` 填凭证；`VOLC_CLUSTER` 按控制台改（一般 `volcano_tts`），`VOLC_SPEAKER_ID` 填标准音色的 voice_type |
-| **2 · 你的克隆音**（完全体） | 火山「声音复刻」训练出的**你自己的声音** | 火山账号 + 按官方流程录参考音克隆 | `.env` 填 `S_` 开头的 SPEAKER_ID；正式出片走 `tts_takes.py` 双 take + ASR 回读筛选 |
+它不是一个产品，是一种做内容的方式：**让自动化替你出片，你只负责想法和文稿。**
 
-**克隆是怎么回事（第 2 档）**：火山控制台开通「语音技术 → 声音复刻」→ 录一段你自己的朗读参考音 → 平台训练出专属音色，给你一个 `S_` 开头的 SPEAKER_ID → 出片时 skill 调火山 TTS 把稿子逐句合成为你的声音（默认 1.2x 紧凑口播）。随后本地 faster-whisper 提**词级时间戳** + 算 30fps **RMS 响度包络**——这一份数据同时驱动 IP 小人的**口型开合**、**词级字幕**的卡拉OK填充、画面动效 reveal 的**节拍锚点**。声音和画面因此天然咬合。
+## 它拿到一段文稿后会做什么
 
-**没配 `.env` 会怎样？** 自动落在第 0 档：免费声音照常出**完整**的片，口型/字幕/动效一个不少。edge-tts 是微软 Edge 的非官方免费接口，偶发限流/失效时先 `pip install -U edge-tts`，仍不行就升到第 1 档。
+1. **先把书面语改成人话**——短句、停顿、语气词，念出来不像机器读稿
+2. **配音**——默认用免费声音（下面细说），一句一段
+3. **让小人开口**——口型跟着声音的响度实时开合，眨眼、点头、换手势都落在语义节点上
+4. **给每句话配一张会动的画面**——不是把这句话再打一遍字，而是抽成一个点：一个数字、一条时间轴、一道收窄的门缝
+5. **词级字幕**——玻璃气泡里逐词点亮，像小人真的在说话
+6. **渲染成 1080×1920 的 MP4**——直接发抖音 / 视频号 / 小红书
 
-## 一切都可以定制
+底层是 **HyperFrames**：一个用网页技术画每一帧、再逐帧渲染成视频的框架。你可以把它理解成「让代码当剪辑师」——所有画面都是代码生成的，所以才能全自动、能复跑、能随便改。
 
-这套 skill 是一个**模板系统**，不是某个人的专属工具。每一层都有明确的替换口：
+## 声音：默认免费，随时换成你自己的
 
-| 层 | 改哪里 | 说明 |
-|---|---|---|
-| **声音** | `.env` 或 `tts_free.py --voice` | 三档任选：免费 edge-tts 声 / 火山标准音色 / 你的克隆音，见上一节 |
-| **IP 小人形象** | `assets/character.svg` | **完全可替换**。保持同名节点即可被动效系统驱动：`#character` 根组、`#head` / `#body` / `#shadow`、`#eyes`（眨眼）、`#mouth`（口型，随响度包络开合）、四个姿势组 `#pose-explain` / `#pose-point` / `#pose-raise` / `#pose-think`。画成你自己的形象（建议白描边圆头端点的线稿风），换完跑一次 `checks/smoke.sh` 验证口型和姿势切换 |
-| **品牌色 / 字体** | `assets/frame.md` | `colors.signal` 就是全片那唯一一处强调红；`typography` 定字体。注意 `ink` / `canvas` 两个 key **名**是管线承重的（暗底反转机制），改值别改名 |
-| **口播语感** | `references/oral-script.md` 「个人语感层」 | 默认是一套实战验证过的口播口径，把禁用词/常用句式换成你自己的风格 |
-| **真人节奏基准** | `scripts/voice_baseline.py` | 可选：从你的真实录音提语速带/停顿分布，双 take 筛选和成片验收按它比；不建也能出片（相关检查自动跳过） |
-| **可视化形式库** | `references/frame-recipes.md` 选型表 | 菜单是活的：每集长出的新形式验收后蒸馏一行回表，形式库随出片增长 |
-| **素材库** | `assets/broll/` `assets/stickers/` | 跨集复用的 B-roll / 贴纸登记进 manifest（schema 见 `references/media-library.md`），单集素材放项目层，构建时自动合并 |
+**装好就能出片。** 默认走微软 Edge 的免费在线声音（云希、晓晓这批），不用注册任何账号。声音不是你，但口型、字幕、动效一个不少——先跑起来看效果，够用很久。
 
-## 示例生成器：参考，不是模板
+**想让视频说你自己的声音**：去火山引擎（豆包的声音就是这套）开通「声音复刻」，录一段你的参考音，拿到音色 ID 填进 `.env`，全片就是你的声音了。这条路是原生支持的，还带双 take 筛选：每句合成两条，用语音识别回读，毙掉念错的那条；再用 `scripts/voice_baseline.py` 从你的真实录音提一份语速基准，出来的节奏会更像真人。
 
-[`assets/_generator-full-example.mjs`](assets/_generator-full-example.mjs) 是作者一集**已公开发布**视频的生成器原件，原样保留——12 镜 / 6 幕 / 骨架继承 / 点阵贯穿 / 气口留白的完整实战写法都在里面。写你自己的集子时**抄结构与手法，别抄文案**；日常建帧从 `assets/generator-base.mjs` 起步即可。
+**想接豆包标准音色 / MiniMax / 别家的克隆音**：管线对声音服务是解耦的——它只认两样东西：每句一个 wav + 一份时间戳。照着 `scripts/tts_free.py` 换掉里面那个合成函数，其余的对齐、口型、字幕原样工作。
 
-## 安装（约 10 分钟）
+> 仓库里没有、也永远不会有任何人的声音和 API 凭证。声音永远来自你自己的配置，`.env` 只存在你本机。
 
-**1. 放置 skill**
+## 小人和画面，都能换成你的
+
+| 想换什么 | 怎么换 |
+|---|---|
+| **小人形象** | 画一个你自己的，替换 `assets/character.svg`——保持嘴巴、眼睛、手势几个图层的名字不变，动效系统就能直接驱动它 |
+| **品牌色和字体** | 改 `assets/frame.md` 里的色值和字体，那「每帧唯一一处红」也在这里定义 |
+| **口播语感** | `references/oral-script.md` 有一节「个人语感层」，把禁用词和句式换成你自己的说话方式 |
+| **画面形式库** | `references/frame-recipes.md` 是一张会长大的选型表：门缝、时间轴、迁移弧线、数字滚轮……每出一集新形式，就蒸馏一行回去 |
+
+`assets/_generator-full-example.mjs` 是我一集已发布视频的完整原件，12 镜的实战写法都在里面——**抄结构与手法，别抄文案**。
+
+## 再往前一步：接进你的自动化
+
+这条链路从第一天就是给自动化设计的：skill 内置无人值守模式，质检 gate 不过就不交片，绝不糊弄。配合 Claude Code 的定时任务和飞书这类工具，你可以搭出这样的流水线：
+
+**飞书文档里丢一段稿子 → 定时任务捡起来 → 自动出片 → 成片发回群里。**
+
+内容这件事，从「每条都要做」变成「每条只要想」。
+
+## 上手（10 分钟）
+
+需要一台装好 Node 18+、ffmpeg、Python 3 的 Mac / Linux，以及 HyperFrames 套件里的 `faceless-explainer` skill（本 skill 复用它的管线脚本）。
 
 ```bash
+# 1. 装 skill
 git clone https://github.com/derek-zhuolin/interflow-ip-video.git ~/.claude/skills/interflow-ip-video
-```
 
-**2. 基础依赖**
-
-- Node 18+（`npx hyperframes --version` 能跑，≥0.7.5x）
-- `ffmpeg` / `ffprobe`（`brew install ffmpeg`）
-- HyperFrames 套件里的 `faceless-explainer` skill（本 skill 复用它的 audio/captions/assemble/transitions 管线脚本，路径 `~/.claude/skills/faceless-explainer/scripts`）
-
-**3. TTS Python 环境**
-
-```bash
+# 2. TTS 环境（一个 Python venv）
 python3 -m venv ~/.venvs/interflow-tts
 ~/.venvs/interflow-tts/bin/pip install requests soundfile numpy faster-whisper edge-tts zhconv
+echo 'export TTS_PYTHON=~/.venvs/interflow-tts/bin/python' >> ~/.zshrc
+
+# 3. 验证全链路（零凭证零费用，几分钟）
+cd ~/.claude/skills/interflow-ip-video && bash checks/smoke_free.sh
 ```
 
-然后把这行加进你的 shell 配置（`~/.zshrc`）：
+要用自己的克隆音，再做一步：`cp .env.example .env`，填你自己的火山凭证（`.gitignore` 已挡住，凭证不会进 git，也别转发给任何人）。
 
-```bash
-export TTS_PYTHON=~/.venvs/interflow-tts/bin/python
-```
+完整工作流和所有硬规则在 [SKILL.md](SKILL.md)——那份是写给 Claude 看的，技术细节都在那里。
 
-（不设的话脚本会退回用 `python3`，只要那个环境装了上面的包也行。）
+## 许可
 
-**4.（可选）你的声音凭证——第 1/2 档才需要**
-
-```bash
-cd ~/.claude/skills/interflow-ip-video
-cp .env.example .env
-```
-
-填入你自己的 `VOLC_APPID` / `VOLC_ACCESS_TOKEN` / `VOLC_SPEAKER_ID`（获取方式见上面「声音的三档」）。**跳过这步 = 用第 0 档免费声，一样能出片。**
-
-> `.env` 已在 `.gitignore` 里。**这是你的私人凭证：不进 git、不截图、不转发。**
-
-**5.（可选，建议）真人语音基准**
-
-```bash
-"$TTS_PYTHON" scripts/voice_baseline.py --out voice_baseline.json 你的录音1.wav 你的录音2.mp3
-```
-
-## 首次验证
-
-```bash
-bash checks/smoke_free.sh   # 没配 .env：免费声档全链路冒烟（零凭证零费用，约 2-4 分钟渲染）
-bash checks/smoke.sh        # 配了 .env：火山声全链路冒烟（几分钱 TTS + 2-4 分钟渲染）
-```
-
-绿了（`SMOKE PASS`）说明整条机械链路可用。改过素材层/gate 后加跑 `bash checks/smoke_media.sh`。
-
-## 隐私边界（给会再分享的你）
-
-- 仓库不含任何 API 凭证、任何人的音色或语音数据——声音永远来自使用者自己的 `.env`
-- `.env`、`videos/`（出片工程）、`*.wav` 都在 `.gitignore`；fork / PR / 转发前确认这三样没被带上
-- `voice_baseline.json` 是从你个人录音提取的数据（含来源文件路径），同样不要提交
-
-## License
-
-代码、文档与管线 [MIT](LICENSE)；**品牌资产除外**——`assets/character.svg` 小人形象与 "Interflow" 名称保留所有权利（可随 skill 默认使用，不得单独再分发或用作你自己的品牌/IP 标识，详见 LICENSE 尾部声明）。
+代码与文档 [MIT](LICENSE)。`assets/character.svg` 的小人形象和 "Interflow" 名称除外——可以随 skill 默认使用，别单独拿去当自己的品牌。换成你自己的小人，它就完全是你的了。
