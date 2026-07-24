@@ -12,10 +12,12 @@ description: 把中文文稿做成 Interflow Bold-Mono 竖屏口播视频——�
 ## 依赖（首次先查；环境搭建步骤见 README.md）
 - `npx hyperframes --version` 可用（≥0.7.5x），`ffmpeg/ffprobe` 可用
 - 管线 skill `faceless-explainer`（HyperFrames 套件，提供 audio/captions/assemble/transitions 脚本）
-- TTS Python 环境：任意 venv 装好 `requests soundfile numpy faster-whisper`（建议再装 `zhconv`），
+- TTS Python 环境：任意 venv 装好 `requests soundfile numpy faster-whisper edge-tts`（建议再装 `zhconv`），
   并 `export TTS_PYTHON=<venv>/bin/python`（未设则脚本用 `python3`）
-- 火山凭证：**你自己的**火山引擎「声音复刻」账号与音色——`cp .env.example .env` 填入
-  VOLC_APPID / VOLC_ACCESS_TOKEN / VOLC_SPEAKER_ID（`.env` 已在 .gitignore，绝不提交/外传）
+- 声音（三档，详见 README「声音的三档」）：**第 0 档** edge-tts 免费声——零账号零凭证，走
+  `scripts/tts_free.py`，**无 .env 时用这档，照常出完整片**；**第 1 档** 火山标准音色 / **第 2 档**
+  你自己的声音复刻——`cp .env.example .env` 填入你自己的 VOLC_APPID / VOLC_ACCESS_TOKEN /
+  VOLC_SPEAKER_ID（`.env` 已在 .gitignore，绝不提交/外传）
 - 可选但建议：`scripts/voice_baseline.py` 从你的真实录音提 `voice_baseline.json` 存 skill 根——
   take 筛选与验收的语速项按它比；没有基准时这些检查自动跳过
 - 管线脚本路径：**必须用 realpath** `FE=$(cd ~/.claude/skills/faceless-explainer/scripts && pwd -P)`。
@@ -27,7 +29,7 @@ description: 把中文文稿做成 Interflow Bold-Mono 竖屏口播视频——�
 
 - [ ] **1 起项目**：`bash <SKILL_DIR>/scripts/new_project.sh videos/<项目名>`（init + 拷入 frame.md / character.svg / 玻璃字幕皮肤）
 - [ ] **2 写 SCRIPT.md**：**先过口语化改写**（`references/oral-script.md`：短句 ≤20 字、标点即停顿标记、`……` 思考长停每稿 ≥2 处、语气词进稿、个人语感禁用词——**书面语禁止直接进 TTS**，稿首加 `<!-- oral-rewrite -->` 留痕）。一镜一句，格式硬约束——`## Line N — <标签> (Frame N)` 标题 + **4 空格缩进**的口播原文（解析器只认缩进行）。8–12 镜、每句 ≤35 字为宜。**写完先分幕**：把句子分成 **3–5 个场景组（幕）**，每幕一个论点——这决定步骤 3 的幕尾气口、步骤 4 的转场和步骤 5 的骨架继承，是节奏的总开关。
-- [ ] **3 配音**：正式出片走**双 take 路径**——`"${TTS_PYTHON:-python3}" <SKILL_DIR>/scripts/tts_takes.py --script SCRIPT.md --out-dir . --baseline <SKILL_DIR>/voice_baseline.json --gap-map "<幕尾帧号>"`（每句 2 take：ASR 回读毙错读/吞字、语速对真人基准带筛、`……` 长停不足在词边界物理补静音；exit 3 = 有句要改写重跑，exit 2 = 拿不准句在 `takes/undecided.json` 给用户人耳选条后加 `--choose "帧:tag"` 定稿；额外产 **beat_map.json** = 词级时间戳唯一时间源）。**`--baseline` 可选**：还没提基准就先不传（语速带不筛，只靠 ASR 回读关），但建议尽早用 `scripts/voice_baseline.py` 从你的真实录音提一份（换克隆音/口播风格变后重提）。**首词时间戳信 RMS 起振不信 whisper 句首值**（脚本已自动对齐，别手改 beat_map）。冒烟/快速草稿可退回单 take：`tts_clone.py --script SCRIPT.md --out-dir . --gap-map "<幕尾帧号>"`
+- [ ] **3 配音**：正式出片走**双 take 路径**——`"${TTS_PYTHON:-python3}" <SKILL_DIR>/scripts/tts_takes.py --script SCRIPT.md --out-dir . --baseline <SKILL_DIR>/voice_baseline.json --gap-map "<幕尾帧号>"`（每句 2 take：ASR 回读毙错读/吞字、语速对真人基准带筛、`……` 长停不足在词边界物理补静音；exit 3 = 有句要改写重跑，exit 2 = 拿不准句在 `takes/undecided.json` 给用户人耳选条后加 `--choose "帧:tag"` 定稿；额外产 **beat_map.json** = 词级时间戳唯一时间源）。**`--baseline` 可选**：还没提基准就先不传（语速带不筛，只靠 ASR 回读关），但建议尽早用 `scripts/voice_baseline.py` 从你的真实录音提一份（换克隆音/口播风格变后重提）。**首词时间戳信 RMS 起振不信 whisper 句首值**（脚本已自动对齐，别手改 beat_map）。冒烟/快速草稿可退回单 take：`tts_clone.py --script SCRIPT.md --out-dir . --gap-map "<幕尾帧号>"`。**没有火山凭证（免费声档/文生视频模式）**：`"${TTS_PYTHON:-python3}" <SKILL_DIR>/scripts/tts_free.py --script SCRIPT.md --out-dir . --gap-map "<幕尾帧号>" [--voice zh-CN-XiaoxiaoNeural]`——产物契约完全相同，口型/字幕/动效照常；双 take 与语速基准筛选是克隆音专用，不适用
   产出 `audio/NN.wav`（尾部已拼气口）+ `audio_meta.json`（词级时序 + 每帧 30fps RMS 口型包络）。**气口**：默认 auto 模式——按句尾标点分档（？！0.5–0.65s / ，0.3–0.4s / 。0.4–0.55s）+ 档内随机抖动，幕尾帧（`--gap-map`）用最长档 0.65–0.85s。没气口 = 语音墙对墙听着喘；气口长度死板整齐（固定 0.45/0.7s 一类）= 听着像节拍器不自然，两个都要避。传 `--gap <秒数>` 可退回旧的固定等长模式。**audio_meta 是项目资产，建帧后禁重算**（时序漂移 = 口型/字幕失联）。
 - [ ] **4 写 STORYBOARD.md**：**文件头必须 YAML frontmatter `format: portrait`**（缺了 assemble 默认 1920×1080 横屏，整条片方向反掉）。每镜 `## Frame N — 标题` + `duration`（先估，步骤 6 会同步真值）+ `transition_in` + `scene` + `voiceover`(原文) + `media`（见下）+ `src: compositions/frames/NN-<slug>.html`。**转场按幕走：幕内 `transition_in: cut`（同一镜头在推进），幕间 `transition_in: crossfade`**——整片 crossfade 到底 = 每 4s 全屏换血，节奏太跳。
   **media 字段（语义命中才配，无命中回退）**：先 `node <SKILL_DIR>/scripts/media_lib.mjs list --project .` 看合并素材清单（库层+当天项目 assets/，同 id 项目覆盖库）。beat 口播里的**实体/动作/场景**与素材 tags/desc 说同一件事 = 命中，写 `- media: broll:<id> (media-full|media-pip|media-bg)`；**无命中一律 `- media: none`，回退纸雕或图表帧，禁止硬配无关图**。命中的素材过 `bash <SKILL_DIR>/scripts/prep_media.sh <源> . --dur <beat秒> --id <id>` 进 `public/media/`（视频自动物理静音+裁至 min(beat,4s)+烘焙旋转；beat 控制在 ≤4s 语音）。数字人段不走 media 字段，步骤 5 配 `avatar`。规范：`references/media-library.md`。
@@ -59,7 +61,7 @@ description: 把中文文稿做成 Interflow Bold-Mono 竖屏口播视频——�
 2. **质检自动化**：快照自查照跑（发现问题修复以一轮为限），结束前**必须**跑 `scripts/gate_redlines.mjs --project . --render renders/video.mp4`，以其退出码为最终成败判定。
 3. **产物约定**：成片 `renders/video.mp4` + 封面 `qc/cover.png`（开场帧 ~1s 处快照）。
 4. **失败约定**：gate 不过 / 渲染失败重试一次仍败 → 打印 `FAIL: <原因>` 后退出，**不交付半成品**；audio_meta 相关失败必须整链重跑而不是带着漂移出片。
-5. **换机/镜像验证**：部署新环境先跑 `bash <SKILL_DIR>/checks/smoke.sh`（3 镜零 LLM 全链路冒烟）；改到素材层/媒体形式/gate 时加跑 `bash <SKILL_DIR>/checks/smoke_media.sh`（3 图+1 视频六镜:media 形式/贴纸/avatar 降级/注入/媒体红线），双绿再接真实任务。
+5. **换机/镜像验证**：部署新环境先跑 `bash <SKILL_DIR>/checks/smoke.sh`（3 镜零 LLM 全链路冒烟；无火山凭证的环境改跑 `bash <SKILL_DIR>/checks/smoke_free.sh` 免费声档版，零凭证零费用）；改到素材层/媒体形式/gate 时加跑 `bash <SKILL_DIR>/checks/smoke_media.sh`（3 图+1 视频六镜:media 形式/贴纸/avatar 降级/注入/媒体红线），双绿再接真实任务。
 
 ## 红线（违反 = 返工）
 0. **素材红线（gate 查 slots.json）**：连续纯文字帧 ≤2；非纯文字帧占比 ≥40%；素材语义命中才配（无命中回退纸雕/图表，禁硬配）；视频 B-roll 必须过 prep_media.sh（物理静音+裁 ≤4s）；贴纸 ≤2/帧且不入字幕安全区（y≥1500）；全片仅一个音色；avatar 只认 local-rig（heygen 自动降级，永不阻塞）。

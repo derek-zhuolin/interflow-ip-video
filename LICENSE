@@ -1,0 +1,43 @@
+MIT License
+
+Copyright (c) 2026 Derek Lee (derek-zhuolin)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+────────────────────────────────────────────────────────────────────────
+
+Brand Assets Exception / 品牌资产除外声明
+
+The MIT license above covers the code, documentation, templates and pipeline
+of this repository, EXCEPT the following brand assets:
+
+  - assets/character.svg — the "Interflow" IP mascot artwork
+  - the "Interflow" name and visual identity
+
+These brand assets remain (c) Derek Lee, all rights reserved. You MAY keep
+them as the default configuration when producing videos with this skill.
+You may NOT redistribute them as standalone assets, use them as your own
+brand / IP identity, or imply official affiliation. For a fully-yours build,
+replace assets/character.svg with your own mascot (node contract in README).
+
+上述 MIT 许可覆盖本仓库的代码、文档、模板与管线，但**不包括**以下品牌资产：
+assets/character.svg（Interflow IP 小人形象）以及 "Interflow" 名称与视觉识别。
+品牌资产保留所有权利：允许在使用本 skill 出片时按默认配置使用；不得将其单独
+抽出再分发、不得用作你自己的品牌 / IP 标识、不得暗示官方关联。想要完全属于
+你的版本，请按 README 的节点契约替换 assets/character.svg 为你自己的小人形象。
