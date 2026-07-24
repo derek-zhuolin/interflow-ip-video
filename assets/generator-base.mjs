@@ -122,7 +122,9 @@ const ANIMATOR = `
         function animChar(tl, S, dur, gOff, env, poses, nods){
           var $=function(p){return document.getElementById(p+S);};
           var fl=$('if-float-'),hd=$('if-head-'),ey=$('if-eyes-'),mo=$('if-mouth-'),sh=$('if-shadow-');
-          var PG={}; poses.forEach(function(pp){ PG[pp[1]]=$('if-pose-'+pp[1]+'-'); });
+          // 四个姿势组全量接管:只按 poses 建映射会漏掉未列出的组——explain 在 rig 里初始可见,
+          // 没被列进 poses 时永不隐藏,与当前姿势叠成"多条手臂"重影(实战踩坑 2026-07-24)
+          var PG={}; ['explain','point','raise','welcome'].forEach(function(n){ var el=$('if-pose-'+n+'-'); if(el) PG[n]=el; });
           var TAU=Math.PI*2, p={t:0};
           tl.to(p,{t:dur,duration:dur,ease:'none',onUpdate:function(){
             var t=p.t, g=t+gOff;                                   // gOff=全片累计起点→浮动相位跨帧连续
@@ -141,10 +143,11 @@ const ANIMATOR = `
             sh.setAttribute('transform','matrix('+sx.toFixed(3)+',0,0,1,'+(180*(1-sx)).toFixed(2)+',0)');
             sh.style.opacity=(0.55-0.28*high).toFixed(3);
             var seg=0; for(var i=0;i<poses.length;i++){ if(t>=poses[i][0]) seg=i; }
-            var prog=Math.min(1,(t-poses[seg][0])/0.3), op={};     // 姿势 0.3s 交叉淡入
-            op[poses[seg][1]]=(op[poses[seg][1]]||0)+prog;
-            if(seg>0) op[poses[seg-1][1]]=(op[poses[seg-1][1]]||0)+(1-prog);
-            for(var nm in PG){ PG[nm].style.opacity=(op[nm]||0).toFixed(3); }
+            // 硬切 + 0.18s 快速淡入:任一时刻只有一组手臂可见。交叉淡入期两组都接近实心,
+            // 观感是"四条手臂"而不是过渡——姿势之间手臂位置差太远,插值不出中间态
+            var prog=Math.max(0,Math.min(1,(t-poses[seg][0])/0.18));
+            for(var nm in PG){ PG[nm].style.opacity='0'; }
+            if(PG[poses[seg][1]]) PG[poses[seg][1]].style.opacity=(0.55+0.45*prog).toFixed(3);
           }},0);
         }`;
 

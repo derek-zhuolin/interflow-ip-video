@@ -4,6 +4,7 @@
 - 结构契约（不满足直接报错）
 - 坐标坑（最常犯）
 - seek-safe 动效契约
+- IP 小人 rig 坑
 - 字体
 - 暗底字幕 token 反转
 - 调试口径
@@ -38,6 +39,10 @@
 - 循环感（呼吸/浮动/眨眼/口型）一律 **onUpdate 里用时间 t 的确定性函数**算，SVG 变换用 `setAttribute('transform', 'rotate(a cx cy)'/'matrix(...)')` **显式支点**（GSAP 的 transform-origin 配 fill-box 在细线/组上会漂）。
 - 入场用 `fromTo`（seek 到 t=0 状态才正确）；非末帧禁 exit 动效（harness 转场就是 exit）。
 - 沿路径运动：`getPointAtLength(progress * totalLength)` 在 onUpdate 里采样——确定性且 seek-safe。
+
+## IP 小人 rig 坑
+- **姿势组必须全量接管，不能只管 `poses` 里列出的**（2026-07-24 咬穿一集）：rig 里 `if-pose-explain-*` 初始就可见（其余三组带 `opacity:0`），而旧版 animChar 只按 `poses` 建 PG 映射——某帧 `poses` 不含 explain（如 `[[0,"point"],[t,"raise"]]`）时，explain 那组**永不被隐藏**，与当前姿势叠成「多条手臂」重影。判据：小人举手/指向时，身侧还挂着一对垂下的手。修法：PG 按四个姿势名 `['explain','point','raise','welcome']` 全量建，每帧先全置 0 再点亮当前组。
+- **姿势切换用硬切，不用交叉淡入**：不同姿势的手臂位置差太远，插值不出中间态——0.3s 交叉期两组都接近实心，观感是重影而不是过渡。改成硬切 + 0.18s 快速淡入（`0.55→1`），任一时刻只有一组手臂可见。
 
 ## 字体
 - Google Fonts `@import` 可过渲染（producer 编译期解析），但 `font-family` 里**禁留无 @font-face 的系统 CJK 名**（PingFang SC / Microsoft YaHei → `font_family_without_font_face` error）。中文 = `"Noto Sans SC", sans-serif` 就够。
