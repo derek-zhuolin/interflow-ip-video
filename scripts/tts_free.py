@@ -4,7 +4,9 @@
 「三档声音」的开箱档：没有火山凭证也能完整出片（文生视频模式）——
 口型/字幕/动效吃的是音频的**响度包络与词级时间戳**，跟"谁的声音"无关，
 所以免费声音驱动的小人动效与克隆音完全一致。
-产物契约与 tts_clone.py 完全相同（audio/NN.wav 尾部拼气口 + audio_meta.json），下游零改动。
+产物契约与 tts_clone.py 完全相同（audio/NN.wav 尾部拼气口 + audio_meta.json），下游零改动；
+另落 beat_map.json（词级时间戳唯一时间源，与 tts_takes.py 同 schema）——生成器的
+wordT/pauseT 与 review_gate 的锚点核对都吃它，缺了就只能手写秒数（红线）。
 
 依赖: TTS venv 里多装一个 edge-tts（`$TTS_PYTHON -m pip install edge-tts`）。
      微软 Edge 在线合成，免费、无需账号；属非官方接口，偶发限流/失效时
@@ -97,7 +99,7 @@ def main():
     from faster_whisper import WhisperModel
     asr = WhisperModel(a.asr_model, device="cpu", compute_type="int8")
 
-    voices = []
+    voices, beat_frames = [], []
     for it in lines:
         fr, text = it["frame"], it["text"]
         wp = os.path.join(audio_dir, f"{fr:02d}.wav")
@@ -118,17 +120,48 @@ def main():
         segs, _ = asr.transcribe(wp, language="zh", word_timestamps=True)
         ww = [{"text": w.word.strip(), "start": w.start, "end": w.end}
               for seg in segs for w in (seg.words or [])]
+        env = envelope(wp)
+        # whisper 在句首静音段把首词 start 压到 0.00(已知偏置)——用 RMS 起振对齐声学真值,
+        # 否则字幕比语音早 0.17-0.27s 出现,词锚/口型验收全被带偏(与 tts_takes.py 同一处理)
+        if ww:
+            onset = next((i / ENV_FPS for i in range(len(env) - 1)
+                          if env[i] > 0.3 and env[i + 1] > 0.3), None)
+            if onset is not None and ww[0]["start"] < onset - 0.05:
+                ww[0]["start"] = round(min(onset, ww[0]["end"] - 0.02), 3)
+        words = rebuild_words(fr, text, ww)  # 字幕/锚点口径(稿件原文短语)
+        # 停顿从原始 ASR 词算(声学真值)——rebuild_words 是短语级,会把帧内停顿吞进跨度
+        pauses = []
+        for i in range(len(ww) - 1):
+            g = ww[i + 1]["start"] - ww[i]["end"]
+            if g >= 0.25:
+                pauses.append({"after": ww[i]["text"], "start": round(ww[i]["end"], 3), "dur": round(g, 3)})
+        last_end = ww[-1]["end"] if ww else 0
+        pauses.append({"after": "(尾气口)", "start": round(last_end, 3), "dur": round(dur - last_end, 3)})
+        beat_frames.append({"frame": fr, "take": "free", "duration_s": round(dur, 3),
+                            "words": words,
+                            "asr_words": [{"text": w["text"], "start": round(w["start"], 3),
+                                           "end": round(w["end"], 3)} for w in ww],
+                            "pauses": pauses})
         voices.append({"frame": fr, "path": f"audio/{fr:02d}.wav", "duration_s": round(dur, 3),
                        "voice_type": a.voice,  # 音色标记:gate「全片一个音色」红线按它数
-                       "words": rebuild_words(fr, text, ww),
-                       "mouth_env": envelope(wp), "env_fps": ENV_FPS})
+                       "words": words,
+                       "mouth_env": env, "env_fps": ENV_FPS})
         print(f"[{fr:02d}] ok · {dur:.2f}s（含气口 {gap:.2f}s）")
 
+    # beat_map.json = 词级时间戳唯一时间源:生成器的 wordT/pauseT 与 review_gate 锚点核对都吃它
+    off = 0.0
+    for bf in beat_frames:
+        bf["start_global"] = round(off, 3)
+        off += bf["duration_s"]
+    json.dump({"version": 1, "source": "tts_free", "total_s": round(off, 3),
+               "baseline": None, "frames": beat_frames},
+              open(os.path.join(out, "beat_map.json"), "w", encoding="utf-8"),
+              ensure_ascii=False, indent=2)
     meta_path = os.path.join(out, "audio_meta.json")
     json.dump({"bgm": None, "voice_type": a.voice, "voices": voices, "sfx": []},
               open(meta_path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
     tot = sum(v["duration_s"] for v in voices)
-    print(f"✓ {meta_path} · {len(voices)} 段 · {tot:.2f}s")
+    print(f"✓ {meta_path} + beat_map.json(唯一时间源) · {len(voices)} 段 · {tot:.2f}s")
 
 
 if __name__ == "__main__":
