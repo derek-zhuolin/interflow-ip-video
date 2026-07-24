@@ -20,6 +20,8 @@ description: 把中文文稿做成 Interflow Bold-Mono 竖屏口播视频——�
   VOLC_SPEAKER_ID（`.env` 已在 .gitignore，绝不提交/外传）
 - 可选但建议：`scripts/voice_baseline.py` 从你的真实录音提 `voice_baseline.json` 存 skill 根——
   take 筛选与验收的语速项按它比；没有基准时这些检查自动跳过
+- 个人层（可选）：skill 根若存在 `LOCAL.md`（已在 .gitignore，永不入库），先读它——这台机器
+  主人的私人触发词与默认声音档位在里面，与本文件冲突时以 LOCAL.md 为准。
 - 管线脚本路径：**必须用 realpath** `FE=$(cd ~/.claude/skills/faceless-explainer/scripts && pwd -P)`。
   坑：若 `faceless-explainer` 目录是 symlink，Node ESM 会 realpath 模块，
   导致 `captions.mjs` 的自运行守卫 `resolve(argv[1])===import.meta.url` 不匹配 → **静默退出 0、不产字幕**
