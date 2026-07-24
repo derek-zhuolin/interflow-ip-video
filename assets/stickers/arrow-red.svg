@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <!-- 手绘红箭头:微弯箭杆 + 开放式箭头,9px round 与品牌粗线稿一致 -->
+  <g fill="none" stroke="#E63946" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 128 C 52 112, 84 78, 118 44" />
+    <path d="M78 40 L120 40 L122 84" />
+  </g>
+</svg>

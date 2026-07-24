@@ -1,0 +1,15 @@
+# 凭证：绝不进 git（火山 token 明文，仅本机 .env）
+.env
+
+# 每集项目产物（渲染 mp4 / 快照 / 音频 / hyperframes 工程）
+videos/
+
+# 音频产物
+*.wav
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store

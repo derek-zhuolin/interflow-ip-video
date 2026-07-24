@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <!-- 白色线稿星芒:主四芒(微弯手绘) + 两颗小点缀 -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M80 22 C 79 42, 79 54, 80 68" />
+    <path d="M80 96 C 80 110, 80 124, 81 140" />
+    <path d="M24 82 C 42 81, 54 81, 66 82" />
+    <path d="M96 82 C 110 82, 124 81, 138 80" />
+  </g>
+  <circle cx="120" cy="38" r="6.5" fill="#FFFFFF" />
+  <circle cx="38" cy="124" r="5.5" fill="#FFFFFF" />
+</svg>

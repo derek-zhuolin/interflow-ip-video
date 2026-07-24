@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "kind": "broll",
+  "note": "B-roll 素材库(schema 见 references/media-library.md)。path 相对本 manifest 所在目录;库素材是跨集复用的,单集素材放当天项目 assets/broll/,build 时自动合并(项目同 id 覆盖库)。",
+  "items": []
+}

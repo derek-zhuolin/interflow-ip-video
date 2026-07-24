@@ -1,0 +1,131 @@
+<!--
+  Interflow IP — GLASSMORPHISM speech-bubble caption skin.
+  Bottom dialogue row (定稿 2026-07-15): IP 小人在左下(框 x40–236, y1500–1750)，
+  字幕是带左侧小尾巴的玻璃对话气泡，排在小人右边(x264–1044)、与小人垂直居中 = 「小人说的话」。
+  Frosted-glass pill: translucent white film + backdrop-blur + hairline border + inner top
+  highlight + soft drop shadow. Current word pure white; others translucent white.
+  Zero red (red stays the frame's lone accent).
+  Token holes preserved: data-brand-tokens / GROUPS / DURATION / data-duration/width/height.
+-->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+</style>
+
+<!-- captions.mjs injects the project's :root tokens + @font-face here -->
+<style data-brand-tokens></style>
+
+<style>
+  #captions-root { position: absolute; inset: 0; pointer-events: none; }
+  .caption-layer { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+  .caption-stage {
+    /* 定稿：底部对话排——气泡区在小人(x40–236, y1500–1750)右侧，垂直居中对齐 */
+    position: absolute; left: 264px; right: 36px;
+    top: 1500px; height: 250px;
+    display: flex; align-items: center; justify-content: flex-start;
+  }
+  .caption-group { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-start; opacity: 0; }
+
+  /* THE frosted-glass speech bubble */
+  .caption-pill {
+    position: relative; z-index: 0;
+    max-width: 100%;
+    padding: 20px 34px 22px;
+    background: rgba(255, 255, 255, 0.07);
+    -webkit-backdrop-filter: blur(22px) saturate(1.25);
+    backdrop-filter: blur(22px) saturate(1.25);
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    border-radius: 28px;
+    box-shadow: 0 12px 44px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+  /* 左侧小尾巴指向小人（不用 backdrop-blur，避免与胶囊叠出接缝；alpha 提到 0.10 视觉对齐玻璃底；
+     z-index:-1 藏进胶囊背景后面，只露出突出的尖角） */
+  .caption-pill::before {
+    content: ""; position: absolute; z-index: -1;
+    left: -12px; top: 50%;
+    width: 26px; height: 26px;
+    transform: translateY(-50%) rotate(45deg);
+    background: rgba(255, 255, 255, 0.10);
+    border-left: 1px solid rgba(255, 255, 255, 0.20);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.20);
+    border-bottom-left-radius: 6px;
+  }
+  .caption-line {
+    /* 连续文本流(非 flex-wrap 原子块)+ word-break:keep-all —— 让浏览器的中文避头尾生效：
+       小句只在标点处断行、成句不拆词(「客户」「大概率」不被拆两行)、」。，不落行首。
+       inline-block+flex-wrap 会把每个词块变原子盒子，废掉避头尾 → 旧版字幕「割裂」的根因(2026-07-19)。
+       text-wrap:balance 让两行长度均衡。小句都 ≤10 字、行容量 ~14 字，keep-all 不溢出。 */
+    font-family: var(--font-body, "Noto Sans SC"), sans-serif;
+    font-weight: 700; font-size: 44px; line-height: 1.32; letter-spacing: 0.01em;
+    text-align: center; text-wrap: balance;
+    word-break: keep-all; line-break: strict; overflow-wrap: break-word;
+  }
+  .caption-word { display: inline; transition: none; }
+
+  /* #caption-stage prefix (specificity 1,1,0) beats the dark-ground safety net captions.mjs
+     appends last (a RED accent block). Current word = white, others = translucent white. No red. */
+  /* 卡拉OK只切颜色不切字重：inline 流里字重跳变(700→900)会让整行逐字回流抖动。
+     当前词纯白+微辉光，已读过 0.78、未读 0.50 —— 句子随口播「填充」出来，读感成句。 */
+  #caption-stage .caption-word { color: rgba(255, 255, 255, 0.50); background: transparent; box-shadow: none; font-weight: 700; }
+  #caption-stage .caption-word.is-active { color: #FFFFFF; font-weight: 700; background: transparent; box-shadow: none; text-shadow: 0 0 18px rgba(255,255,255,0.28); }
+  #caption-stage .caption-word.is-spoken { color: rgba(255, 255, 255, 0.78); font-weight: 700; background: transparent; box-shadow: none; }
+  #caption-stage .caption-word.cap-brand { color: #FFFFFF; }
+  #caption-stage .caption-word.cap-num { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+  #caption-stage .caption-word.cap-cta { color: #FFFFFF; }
+</style>
+
+<div id="captions-root" data-composition-id="captions" data-timeline-locked data-start="0" data-duration="0" data-fps="30" data-width="0" data-height="0">
+  <div class="caption-layer" aria-hidden="true"><div id="caption-stage" class="caption-stage"></div></div>
+</div>
+
+<script>
+  var GROUPS = [];
+  var DURATION = 0;
+  (function () {
+    var stage = document.getElementById("caption-stage");
+    GROUPS.forEach(function (group, g) {
+      var groupEl = document.createElement("div");
+      groupEl.className = "caption-group"; groupEl.id = "caption-group-" + g;
+      var pill = document.createElement("div"); pill.className = "caption-pill";
+      var line = document.createElement("div"); line.className = "caption-line";
+      (group.words || []).forEach(function (w, i) {
+        var span = document.createElement("span");
+        span.className = "caption-word"; span.id = "caption-word-" + g + "-" + i;
+        span.textContent = String(w.text); line.appendChild(span);
+      });
+      pill.appendChild(line); groupEl.appendChild(pill); stage.appendChild(groupEl);
+    });
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    GROUPS.forEach(function (group, g) {
+      var groupEl = document.getElementById("caption-group-" + g);
+      var words = group.words || [];
+      var next = GROUPS[g + 1];
+      var isLast = g === GROUPS.length - 1;
+      var start = Math.max(0, Number(group.start));
+      var end = isLast ? DURATION : Math.min(Number(next.start), Number(group.end) + 0.3);
+      if (end <= start) end = start + 0.01;
+      tl.set(groupEl, { opacity: 1 }, start);
+      tl.set(groupEl, { opacity: 0 }, end);
+      words.forEach(function (w, i) {
+        var el = document.getElementById("caption-word-" + g + "-" + i);
+        var at = Math.max(start, Number(w.start));
+        tl.set(el, { className: "caption-word" }, start);
+        tl.set(el, { className: "caption-word is-active" }, at);
+        tl.fromTo(el, { scale: 0.96 }, { scale: 1, duration: 0.1, ease: "power3.out" }, at);
+        if (i + 1 < words.length) {
+          var nextAt = Math.max(start, Number(words[i + 1].start));
+          tl.set(el, { className: "caption-word is-spoken" }, nextAt);
+        }
+      });
+      if (words.length) {
+        var lastEl = document.getElementById("caption-word-" + g + "-" + (words.length - 1));
+        var lastSpoken = Math.min(end, Number(words[words.length - 1].end) + 0.1);
+        tl.set(lastEl, { className: "caption-word is-spoken" }, lastSpoken);
+      }
+    });
+    tl.to({}, { duration: DURATION }, 0);
+    window.__timelines["captions"] = tl;
+  })();
+</script>

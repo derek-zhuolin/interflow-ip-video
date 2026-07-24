@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "kind": "stickers",
+  "note": "贴纸库(schema 见 references/media-library.md)。overlay 槽位素材:任何帧可挂 ≤2 个,GSAP 弹入;红色贴纸挂帧时即该帧唯一红。",
+  "items": [
+    {
+      "id": "arrow-red",
+      "type": "sticker",
+      "path": "arrow-red.svg",
+      "tags": ["指向", "强调", "看这里", "arrow"],
+      "desc": "手绘红箭头(9px 线稿,右上指向)——挂它 = 该帧唯一红,别再配其它红",
+      "duration": null
+    },
+    {
+      "id": "bang-white",
+      "type": "sticker",
+      "path": "bang-white.svg",
+      "tags": ["惊叹", "注意", "重点", "alert"],
+      "desc": "白色线稿双感叹号,惊叹/敲重点",
+      "duration": null
+    },
+    {
+      "id": "spark-white",
+      "type": "sticker",
+      "path": "spark-white.svg",
+      "tags": ["新", "亮点", "灵感", "spark"],
+      "desc": "白色线稿四芒星芒,新东西/亮点时刻",
+      "duration": null
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <!-- 白色线稿双感叹号:两根微斜主笔 + 圆点,手绘不对称 -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M58 26 C 56 50, 55 70, 56 92" />
+    <path d="M104 20 C 103 42, 102 60, 104 82" />
+  </g>
+  <circle cx="57" cy="126" r="8.5" fill="#FFFFFF" />
+  <circle cx="105" cy="116" r="8.5" fill="#FFFFFF" />
+</svg>
